@@ -68,8 +68,8 @@ called before report execution (START-OF-SELECTION)
 7. on_sel_screen_value_request
      you have to register fields using macros:
 ```ABAP   
-	 register_value_req_for_param <param_name>.
-	 register_value_req_for_selopt <selopt_name>.
+register_value_req_for_param <param_name>.
+register_value_req_for_selopt <selopt_name>.
 ```
 to get the current values on selection screen do not read directly the parameter/selopt, but call method get_sel_screen_value
 	 
