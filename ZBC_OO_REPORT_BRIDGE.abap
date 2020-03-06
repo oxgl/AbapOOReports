@@ -21,6 +21,9 @@
 *&  + ON_SEL_SCREEN_VALIDATION called before ON_SEL_SCREEN_USER_COMMAND
 *&  + call SET_SEL_SCREEN_VALID_FOR_UCOMM in ON_INITIALIZATION
 *&    to enable validation.
+*& 1.5
+*&  + using FM DYNP_VALUES_READ instead of RS_SELECTIONSCREEN_READ
+*&    for parameters -> supports values longer than 45 chars
 *&---------------------------------------------------------------------*
 
 
@@ -77,9 +80,9 @@ CLASS lcx_validation_error DEFINITION INHERITING FROM cx_dynamic_check.
       RAISING
         lcx_validation_error .
     METHODS if_message~get_longtext
-         REDEFINITION .
+        REDEFINITION .
     METHODS if_message~get_text
-         REDEFINITION .
+        REDEFINITION .
   PROTECTED SECTION.
     METHODS raise_from_sy_internal
       IMPORTING
@@ -137,7 +140,7 @@ CLASS lcl_report_base DEFINITION ABSTRACT FRIENDS lcl_report_helper.
           iv_field_name         TYPE rsscr_name
           iv_field_kind         TYPE tv_selkind DEFAULT gc_selkind_param
         RETURNING
-          VALUE(rv_field_value) TYPE tvarv_val.
+          VALUE(rv_field_value) TYPE dynfieldvalue.
 
   PROTECTED SECTION.
 
@@ -186,59 +189,59 @@ ENDCLASS.                    "lcl_report_helper DEFINITION
 
 DEFINE set_report_class.
 
-  load-of-program.
-    data:
-       gro_user_report_instance   type ref to &1.
-    create object gro_user_report_instance.
+  LOAD-OF-PROGRAM.
+    DATA:
+       gro_user_report_instance   TYPE REF TO &1.
+    CREATE OBJECT gro_user_report_instance.
     lcl_report_helper=>load_of_program( gro_user_report_instance ).
 
-  initialization.
+  INITIALIZATION.
     lcl_report_helper=>initialization( ).
 
-  at selection-screen output.
+  AT SELECTION-SCREEN OUTPUT.
     lcl_report_helper=>sel_screen_output( ).
 
-  at selection-screen.
+  AT SELECTION-SCREEN.
     lcl_report_helper=>sel_screen( ).
 
-  at SELECTION-SCREEN ON EXIT-COMMAND.
+  AT SELECTION-SCREEN ON EXIT-COMMAND.
     lcl_report_helper=>sel_screen_exit_command( ).
 
-  start-of-selection.
+  START-OF-SELECTION.
     lcl_report_helper=>start( ).
 
-  end-of-selection.
+  END-OF-SELECTION.
 
 END-OF-DEFINITION.
 
 DEFINE register_value_req_for_param.
 
-  at selection-screen on value-request for &1.
+  AT SELECTION-SCREEN ON VALUE-REQUEST FOR &1.
     lcl_report_helper=>sel_screen_value_request(
-      exporting
+      EXPORTING
         iv_field_name  = '&1'
         iv_field_kind  = lcl_report_base=>gc_selkind_param
-      changing
+      CHANGING
         cv_field_value = &1 ).
 
 END-OF-DEFINITION.
 
 DEFINE register_value_req_for_selopt.
 
-  at selection-screen on value-request for &1-low.
+  AT SELECTION-SCREEN ON VALUE-REQUEST FOR &1-low.
     lcl_report_helper=>sel_screen_value_request(
-      exporting
+      EXPORTING
         iv_field_name  = '&1-LOW'
         iv_field_kind  = lcl_report_base=>gc_selkind_selopt_low
-      changing
+      CHANGING
         cv_field_value = &1-low ).
 
-  at selection-screen on value-request for &1-high.
+  AT SELECTION-SCREEN ON VALUE-REQUEST FOR &1-high.
     lcl_report_helper=>sel_screen_value_request(
-      exporting
+      EXPORTING
         iv_field_name  = '&1-HIGH'
         iv_field_kind  = lcl_report_base=>gc_selkind_selopt_high
-      changing
+      CHANGING
         cv_field_value = &1-high ).
 
 END-OF-DEFINITION.
@@ -363,37 +366,71 @@ CLASS lcl_report_base IMPLEMENTATION.
 
   METHOD get_sel_screen_value.
     DATA:
-       lt_rsselread      TYPE TABLE OF rsselread.
-    FIELD-SYMBOLS:
-      <fss_rsselread>    LIKE LINE OF lt_rsselread.
+      lt_rsselread  TYPE TABLE OF rsselread,
+      lt_dynpfields TYPE dynpread_tabtype.
 
-    APPEND INITIAL LINE TO lt_rsselread ASSIGNING <fss_rsselread>.
-    <fss_rsselread>-name = iv_field_name.
     CASE iv_field_kind.
       WHEN gc_selkind_selopt_low
         OR gc_selkind_selopt.
-        <fss_rsselread>-kind     = gc_selkind_selopt.
-        <fss_rsselread>-position = 'LOW'.
+        APPEND VALUE #(
+                  name     = iv_field_name
+                  kind     = gc_selkind_selopt
+                  position = 'LOW'
+               ) TO lt_rsselread.
       WHEN gc_selkind_selopt_high.
-        <fss_rsselread>-kind     = gc_selkind_selopt.
-        <fss_rsselread>-position = 'HIGH'.
+        APPEND VALUE #(
+                  name     = iv_field_name
+                  kind     = gc_selkind_selopt
+                  position =  'HIGH'
+               ) TO lt_rsselread.
       WHEN OTHERS.
-        <fss_rsselread>-kind     = gc_selkind_param.
+        APPEND VALUE #(
+                 fieldname = iv_field_name
+               ) TO lt_dynpfields.
+
     ENDCASE.
 
-    CALL FUNCTION 'RS_SELECTIONSCREEN_READ'
-      EXPORTING
-        program     = sy-cprog
-        dynnr       = '1000'
-      TABLES
-        fieldvalues = lt_rsselread.
+    IF lt_rsselread IS NOT INITIAL.
+      CALL FUNCTION 'RS_SELECTIONSCREEN_READ'
+        EXPORTING
+          program     = sy-cprog
+          dynnr       = '1000'
+        TABLES
+          fieldvalues = lt_rsselread.
 
-    READ TABLE lt_rsselread
-     ASSIGNING <fss_rsselread>
-      WITH KEY name = iv_field_name.
+      READ TABLE lt_rsselread
+       ASSIGNING FIELD-SYMBOL(<fss_rsselread>)
+        WITH KEY name = iv_field_name.
 
-    IF sy-subrc IS INITIAL.
-      rv_field_value = <fss_rsselread>-fieldvalue.
+      IF sy-subrc IS INITIAL.
+        rv_field_value = <fss_rsselread>-fieldvalue.
+      ENDIF.
+    ELSEIF lt_dynpfields IS NOT INITIAL.
+      CALL FUNCTION 'DYNP_VALUES_READ'
+        EXPORTING
+          dyname               = sy-cprog
+          dynumb               = '1000'
+        TABLES
+          dynpfields           = lt_dynpfields
+        EXCEPTIONS
+          invalid_abapworkarea = 1
+          invalid_dynprofield  = 2
+          invalid_dynproname   = 3
+          invalid_dynpronummer = 4
+          invalid_request      = 5
+          no_fielddescription  = 6
+          invalid_parameter    = 7
+          undefind_error       = 8
+          double_conversion    = 9
+          stepl_not_found      = 10
+          OTHERS               = 11.
+      IF sy-subrc IS INITIAL.
+        READ TABLE lt_dynpfields ASSIGNING FIELD-SYMBOL(<fss_dynpfield>)
+              WITH KEY fieldname = iv_field_name.
+        IF sy-subrc IS INITIAL.
+          rv_field_value = <fss_dynpfield>-fieldvalue.
+        ENDIF.
+      ENDIF.
     ENDIF.
   ENDMETHOD.                    "get_sel_screen_value
 
