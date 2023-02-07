@@ -1,37 +1,44 @@
-*&---------------------------------------------------------------------*
-*&  Include           ZCRM_OO_REPORT_BRIDGE
-*&---------------------------------------------------------------------*
-*& Developed by: Oxyggen s.r.o.
-*& Description:  Bridge for OO reporting
-*&               (class definition, selection screen calls to
-*&               class method call bridge)
-*&               Only selection screen 1000 is supported in some methods
-*&---------------------------------------------------------------------*
-*& Version history:
-*& 1.0
-*&  = Initial version
-*& 1.1
-*&  + Added support for "ON VALUE-REQUEST"
-*& 1.2
-*&  + Added support for "ON EXIT COMMAND"
-*& 1.3
-*&  + get_sel_screen_value method is public
-*&  + sel_screen_value_request method initializes value from screen
-*& 1.4
-*&  + ON_SEL_SCREEN_VALIDATION called before ON_SEL_SCREEN_USER_COMMAND
-*&  + call SET_SEL_SCREEN_VALID_FOR_UCOMM in ON_INITIALIZATION
-*&    to enable validation.
-*& 1.5
-*&  + using FM DYNP_VALUES_READ instead of RS_SELECTIONSCREEN_READ
-*&    for parameters -> supports values longer than 45 chars
-*&---------------------------------------------------------------------*
+***************************************************************************
+*  Include           ZCRM_OO_REPORT_BRIDGE                                *
+***************************************************************************
+* Developed by: Oxyggen s.r.o.                                            *
+* Description:  Bridge for OO reporting                                   *
+*               (class definition, selection screen calls to              *
+*               class method call bridge)                                 *
+*               Only selection screen 1000 is supported in some methods   *
+***************************************************************************
+* Description of ABAP’s function:                                         *
+* Bridge for OO reporting                                                 *
+* (class definition, selection screen calls to                            *
+* class method call bridge)                                               *
+* Only selection screen 1000 is supported in some methods                 *
+*                                                                         *
+***************************************************************************
+* Version history:                                                        *
+* 1.0                                                                     *
+*  = Initial version                                                      *
+* 1.1                                                                     *
+*  + Added support for "ON VALUE-REQUEST"                                 *
+* 1.2                                                                     *
+*  + Added support for "ON EXIT COMMAND"                                  *
+* 1.3                                                                     *
+*  + get_sel_screen_value method is public                                *
+*  + sel_screen_value_request method initializes value from screen        *
+* 1.4                                                                     *
+*  + ON_SEL_SCREEN_VALIDATION called before ON_SEL_SCREEN_USER_COMMAND    *
+*  + call SET_SEL_SCREEN_VALID_FOR_UCOMM in ON_INITIALIZATION             *
+*    to enable validation.                                                *
+* 1.5                                                                     *
+*  + using FM DYNP_VALUES_READ instead of RS_SELECTIONSCREEN_READ         *
+*    for parameters -> supports values longer than 45 chars               *
+* 1.6                                                                     *
+*  + upgrade of initialization macro, so you can set dynamic class name   *
+*    for example: set_report_class (gv_class_name).                       *
+***************************************************************************
 
-
-*----------------------------------------------------------------------*
-*       CLASS lcx_validation_error DEFINITION
-*----------------------------------------------------------------------*
-*
-*----------------------------------------------------------------------*
+***************************************************************************
+* CLASS lcx_validation_error DEFINITION                                   *
+***************************************************************************
 CLASS lcx_validation_error DEFINITION INHERITING FROM cx_dynamic_check.
   PUBLIC SECTION.
     DATA msgid TYPE symsgid .
@@ -97,11 +104,10 @@ ENDCLASS.                    "lcx_validation_error DEFINITION
 
 CLASS lcl_report_helper DEFINITION DEFERRED.
 
-*----------------------------------------------------------------------*
-*       CLASS lcl_report_base DEFINITION
-*----------------------------------------------------------------------*
-*
-*----------------------------------------------------------------------*
+
+***************************************************************************
+* CLASS lcl_report_base DEFINITION                                        *
+***************************************************************************
 CLASS lcl_report_base DEFINITION ABSTRACT FRIENDS lcl_report_helper.
   PUBLIC SECTION.
     TYPES:
@@ -159,11 +165,9 @@ ENDCLASS.                    "lcl_report_base DEFINITION
 
 
 
-*----------------------------------------------------------------------*
-*       CLASS lcl_report_helper DEFINITION
-*----------------------------------------------------------------------*
-*
-*----------------------------------------------------------------------*
+***************************************************************************
+* CLASS lcl_report_helper DEFINITION                                      *
+***************************************************************************
 CLASS lcl_report_helper DEFINITION.
   PUBLIC SECTION.
     CLASS-METHODS:
@@ -191,8 +195,9 @@ DEFINE set_report_class.
 
   LOAD-OF-PROGRAM.
     DATA:
-       gro_user_report_instance   TYPE REF TO &1.
-    CREATE OBJECT gro_user_report_instance.
+       gro_user_report_instance TYPE REF TO lcl_report_base.
+
+    CREATE OBJECT gro_user_report_instance TYPE &1.
     lcl_report_helper=>load_of_program( gro_user_report_instance ).
 
   INITIALIZATION.
@@ -250,11 +255,9 @@ END-OF-DEFINITION.
 
 
 
-*----------------------------------------------------------------------*
-*       CLASS lcl_report_helper IMPLEMENTATION
-*----------------------------------------------------------------------*
-*
-*----------------------------------------------------------------------*
+***************************************************************************
+* CLASS lcl_report_helper IMPLEMENTATION                                  *
+***************************************************************************
 CLASS lcl_report_helper IMPLEMENTATION.
   METHOD load_of_program.
     gro_instance = iro_instance.
@@ -336,11 +339,9 @@ CLASS lcl_report_helper IMPLEMENTATION.
 
 ENDCLASS.                    "lcl_report_helper IMPLEMENTATION
 
-*----------------------------------------------------------------------*
-*       CLASS lcl_report_base IMPLEMENTATION
-*----------------------------------------------------------------------*
-*
-*----------------------------------------------------------------------*
+***************************************************************************
+* CLASS lcl_report_base IMPLEMENTATION                                    *
+***************************************************************************
 CLASS lcl_report_base IMPLEMENTATION.
 
   METHOD on_load_of_program.                                "#EC NEEDED
@@ -449,11 +450,9 @@ ENDCLASS.                    "lcl_report_base IMPLEMENTATION
 
 
 
-*----------------------------------------------------------------------*
-*       CLASS lcx_validation_error IMPLEMENTATION
-*----------------------------------------------------------------------*
-*
-*----------------------------------------------------------------------*
+***************************************************************************
+* CLASS lcx_validation_error IMPLEMENTATION                               *
+***************************************************************************
 CLASS lcx_validation_error IMPLEMENTATION.
   METHOD constructor.
     CALL METHOD super->constructor
