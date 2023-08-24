@@ -1,11 +1,9 @@
 ***************************************************************************
-*  Include           ZCRM_OO_REPORT_BRIDGE                                *
-***************************************************************************
-* Developed by: Oxyggen s.r.o.                                            *
-* Description:  Bridge for OO reporting                                   *
-*               (class definition, selection screen calls to              *
-*               class method call bridge)                                 *
-*               Only selection screen 1000 is supported in some methods   *
+* Program:    ZCRM_OO_REPORT_BRIDGE                                       *
+* Date:       03.01.2014                                                  *
+* Programmer: Ladislav Grédi, gredi@oxyggen.com                           *
+*             Oxyggen s.r.o.                                              *
+*                                                                         *
 ***************************************************************************
 * Description of ABAP’s function:                                         *
 * Bridge for OO reporting                                                 *
@@ -32,8 +30,11 @@
 *  + using FM DYNP_VALUES_READ instead of RS_SELECTIONSCREEN_READ         *
 *    for parameters -> supports values longer than 45 chars               *
 * 1.6                                                                     *
-*  + upgrade of initialization macro, so you can set dynamic class name   *
+*  + upgrade in initializatioon macro, so you can set dynamic class name  *
 *    for example: set_report_class (gv_class_name).                       *
+* 1.7                                                                     *
+*  + added support for AT LINE SELECTION and AT USER COMMAND, methods:    *
+*    on_list_line_selection and on_list_user_command                      *
 ***************************************************************************
 
 ***************************************************************************
@@ -140,6 +141,10 @@ CLASS lcl_report_base DEFINITION ABSTRACT FRIENDS lcl_report_helper.
           iv_field_kind  TYPE tv_selkind                    "#EC NEEDED
         CHANGING
           cv_field_value TYPE any,                          "#EC NEEDED
+      on_list_line_selection,
+      on_list_user_command
+        IMPORTING
+          iv_ucomm TYPE syucomm,                            "#EC NEEDED
       start ABSTRACT,
       get_sel_screen_value
         IMPORTING
@@ -184,6 +189,8 @@ CLASS lcl_report_helper DEFINITION.
           cv_field_value TYPE any,
       sel_screen,
       sel_screen_exit_command,
+      list_line_selection,
+      list_user_command,
       start.
 
   PROTECTED SECTION.
@@ -211,6 +218,12 @@ DEFINE set_report_class.
 
   AT SELECTION-SCREEN ON EXIT-COMMAND.
     lcl_report_helper=>sel_screen_exit_command( ).
+
+  AT LINE-SELECTION.
+    lcl_report_helper=>list_line_selection( ).
+
+  AT USER-COMMAND.
+    lcl_report_helper=>list_user_command( ).
 
   START-OF-SELECTION.
     lcl_report_helper=>start( ).
@@ -317,6 +330,17 @@ CLASS lcl_report_helper IMPLEMENTATION.
         cv_field_value = cv_field_value ).
   ENDMETHOD.                    "sel_screen_value_request
 
+
+  METHOD list_line_selection.
+    gro_instance->on_list_line_selection( ).
+  ENDMETHOD.
+
+  METHOD list_user_command.
+    IF sy-ucomm IS NOT INITIAL.
+      gro_instance->on_list_user_command( sy-ucomm ).
+    ENDIF.
+  ENDMETHOD.
+
   METHOD start.
 
     TRY.
@@ -364,6 +388,12 @@ CLASS lcl_report_base IMPLEMENTATION.
 
   METHOD on_sel_screen_value_request.                       "#EC NEEDED
   ENDMETHOD.                    "on_sel_screen_value_request
+
+  METHOD on_list_line_selection.                            "#EC NEEDED
+  ENDMETHOD.                    "on_list_line_selection
+
+  METHOD on_list_user_command.                              "#EC NEEDED
+  ENDMETHOD.                    "on_list_user_command
 
   METHOD get_sel_screen_value.
     DATA:
